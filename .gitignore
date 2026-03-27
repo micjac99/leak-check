@@ -8,10 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
-/db/Debian.db
 
 #
 /tools/
 
 #
 .idea/
+/db/breach.db
