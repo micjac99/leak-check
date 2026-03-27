@@ -36,3 +36,18 @@ class ModelResponsePersonAggregated(BaseModel):
     contact: List[str]
     company: List[str]
     source: List[str]
+
+class ModelResponsePersonAggregatedMasking(BaseModel):
+    id: List[str]
+    name: List[str]
+    receiver: List[str]
+    nickname: List[str]
+    phone: List[str]
+    address: List[str]
+    car: List[str]
+    email: List[str]
+    qq: List[str]
+    weibo: List[str]
+    contact: List[str]
+    company: List[str]
+    source: List[str]

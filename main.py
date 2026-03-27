@@ -9,7 +9,10 @@ from db import crud
 from db.crud import SessionDep
 from models.database import Person
 from models.request import ModelRequestQuery
-from models.response import ModelResponsePersonAggregated
+from models.response import ModelResponsePersonAggregated, ModelResponsePersonAggregatedMasking
+
+from lib.aggregation import clean_str_set, clean_int_set, clean_id_set
+from lib.masking import mask_list
 
 app = FastAPI(
     root_path="/breach",
@@ -97,22 +100,6 @@ def detect_input_type(user_input: str) -> str:
     else:
         return "unknown"
 
-def clean_str_set(values):
-    return list({
-        v.strip() for v in values
-        if isinstance(v, str) and v.strip()
-    })
-
-
-def clean_int_set(values):
-    result = set()
-    for v in values:
-        try:
-            if v is not None and str(v).strip():
-                result.add(int(v))
-        except (ValueError, TypeError):
-            continue
-    return list(result)
 
 @app.post("/dig", summary="查询 个人信息“泄漏” 记录", response_model=ModelResponsePersonAggregated)
 def get_person_by_dig(body: ModelRequestQuery, session: SessionDep):
@@ -157,4 +144,69 @@ def get_person_by_dig(body: ModelRequestQuery, session: SessionDep):
             if p.source_obj and p.source_obj.source
         })
     )
+    return aggregated
+
+@app.post(
+    "/dig/masking",
+    summary="查询 个人信息“泄漏” 记录 - 脱敏",
+    response_model=ModelResponsePersonAggregatedMasking
+)
+def get_person_by_dig(body: ModelRequestQuery, session: SessionDep):
+    # ========================
+    # 1. 查询数据
+    # ========================
+    persons: Sequence[Person] = []
+
+    input_type = detect_input_type(body.q)
+
+    match input_type:
+        case "phone":
+            persons = crud.read_persons_by_dig(session, phone_=body.q)
+
+        case "qq":
+            persons = crud.read_persons_by_dig(session, qq_=int(body.q))
+
+        case "email":
+            persons = crud.read_persons_by_dig(session, email_=body.q)
+
+        case "id":
+            persons = crud.read_persons_by_dig(session, id_=body.q)
+
+        case _:
+            raise ValueError(f"未知类型: {body.q}")
+
+    # ========================
+    # 2. 脱敏聚合（核心）
+    # ========================
+    aggregated = ModelResponsePersonAggregatedMasking(
+        # 身份证（必须脱敏）
+        id=mask_list("id", (p.id for p in persons)),
+
+        # ===== 基础信息 =====
+        name=mask_list("name", (p.name for p in persons)),
+        receiver=mask_list("receiver", (p.receiver for p in persons)),
+        nickname=mask_list("nickname", (p.nickname for p in persons)),
+
+        # ===== 联系方式 =====
+        phone=mask_list("phone", (p.phone for p in persons)),
+        email=mask_list("email", (p.email for p in persons)),
+
+        # ===== 数字账号 =====
+        qq=mask_list("qq", (p.qq for p in persons)),
+        weibo=mask_list("weibo", (p.weibo for p in persons)),
+
+        # ===== 其他信息 =====
+        address=mask_list("address", (p.address for p in persons)),
+        car=mask_list("car", (p.car for p in persons)),
+        contact=mask_list("contact", (p.contact for p in persons)),
+        company=mask_list("company", (p.company for p in persons)),
+
+        # ===== 来源（不脱敏）=====
+        source=list({
+            p.source_obj.source
+            for p in persons
+            if p.source_obj and p.source_obj.source
+        })
+    )
+
     return aggregated
