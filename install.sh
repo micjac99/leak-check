@@ -48,8 +48,8 @@ else
     cd breach || exit
 fi
 
-echo "=== 安装 Python 3.12 ==="
-uv python install 3.12
+echo "=== 安装 Python 3.14 ==="
+uv python install 3.14
 echo "Python 版本检查："
 uv python list
 

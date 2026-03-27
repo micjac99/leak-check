@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 定义总库和子库路径
-TOTAL_DB="Debian.db"
+TOTAL_DB="breach.db"
 SUB_DB="macOS.db"
 
 sqlite3 "$TOTAL_DB" <<SQL
